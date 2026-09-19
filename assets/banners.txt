@@ -1,0 +1,44 @@
+# dotman aesthetic ascii banners
+# collection of cute & cozy banners for dotfiles, motd, and terminals
+
+=== 1. Cozy Bunny & Speech Bubble ===
+
+       .  ｡ ﾟ ☁︎ ｡ ﾟ  ✧
+     (\ (\   ╭─────────────────────────────╮
+    ( •.•)  │ · ﾟ ✧  d o t m a n  ✧ ﾟ ·   │
+    o_(")(")│  fast · safe · cozy dotfiles │
+            ╰─────────────────────────────╯
+
+=== 2. Soft Rounded Pixel Typography ===
+
+  . ｡ ˚ ✧                                     ✧ ˚ ｡ .
+    ╭─╮           _                                  
+    │ │          | |                                 
+  ╭─╯ │  ╭───╮ ╭─╯ ├──  ╭─╮╭──╮╭─╮  ╭───╮  ╭────╮    
+  │ ╭╮│  │ ╭╮│ │ ╭╮│    │ ││ ╭╮│ │  │ ╭╮│  │ ╭╮ │ ｡ ﾟ
+  │ ╰╯│  │ ╰╯│ │ ╰╯│_   │ ││ │││ │  │ ╭─┤  │ ││ │    
+  ╰───┴─ ╰───╯ ╰───┴──  ╰─╯╰─╯╰─┴─  ╰───┴─ ╰─╯╰─╯ ✧  
+            · ﾟ ⋆  f a s t  ·  s a f e  ·  t r u e  ⋆ ﾟ ·
+
+=== 3. Sleeping Cat on the Dotfile Box ===
+
+     |\__/,|   (`\
+   _.|o o  |_   ) )   *  .  ｡  ﾟ  ✧
+ -(((---(((--------  d o t m a n
+   ╭──────────────╮  [ fast · safe · atomic ]
+   │ ~/dotfiles/  │  ⋆ ｡ sweet configs tucked in ~
+   ╰──────────────╯
+
+=== 4. Cute Kaomoji CRT Bot ===
+
+      ╭─────────────╮
+      │  (｡♥‿♥｡) ｡ﾟ │   · ﾟ ✧ d o t m a n ✧ ﾟ ·
+     ╭┤  ── ─┬─ ──  ├╮  [ fast · safe · atomic ]
+     │╰─────────────╯│  ~ your dotfile companion ~
+     ╰───┴─┴───┴─┴───╯
+
+=== 5. Compact Cozy Kaomoji ===
+
+  . ｡ ﾟ ✧
+ (˶ᵔ ᵕ ᵔ˶)  d o t m a n  ·  v1.1.0
+  / >📦     configs safe & sound ♡

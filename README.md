@@ -17,6 +17,14 @@
   <img src="https://img.shields.io/badge/tests-100%25_pass-brightgreen.svg?style=flat-square" alt="Tests">
 </p>
 
+```text
+       .  ｡ ﾟ ☁︎ ｡ ﾟ  ✧
+     (\ (\   ╭─────────────────────────────╮
+    ( •.•)  │ · ﾟ ✧  d o t m a n  ✧ ﾟ ·   │
+    o_(")(")│  fast · safe · cozy dotfiles │
+            ╰─────────────────────────────╯
+```
+
 ---
 
 ## What is `dotman`?
@@ -281,6 +289,7 @@ dotman status
 | Command | Flags | Description |
 |---|---|---|
 | `dotman init` | | Initialize current directory as a dotfile repository |
+| `dotman banner` | `[--cat]` `[--bot]` `[--font]` `[--mini]` `[--plain]` | Display cute aesthetic ASCII banner |
 | `dotman add <path>` | `-n, --name <NAME>`<br>`-t, --tag <TAG>`<br>`--copy` | Add file/folder to repository (`--copy` keeps as regular file) |
 | `dotman remove <item>` | `--purge` | Remove item from management and restore original file |
 | `dotman deploy` | `-t, --tag <TAG>`<br>`-f, --force`<br>`--copy`<br>`--dry-run` | Deploy dotfiles to target paths (`--copy` deploys regular files) |

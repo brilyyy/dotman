@@ -1,5 +1,5 @@
 use clap_complete::Shell;
-use dotman::cli::{AddArgs, CompletionsArgs, DeployArgs, InstallDepsArgs, RemoveArgs};
+use dotman::cli::{AddArgs, BannerArgs, CompletionsArgs, DeployArgs, InstallDepsArgs, RemoveArgs};
 use dotman::commands;
 use dotman::config::{DeployMethod, DotConfig, DEFAULT_BACKUP_DIR, DEFAULT_MANIFEST_NAME};
 use dotman::fs::{check_copy_status, check_symlink_status, compute_diff, CopyStatus, SymlinkStatus};
@@ -356,4 +356,39 @@ fn test_deploy_override_copy_flag() {
 
     std::env::set_current_dir(original_cwd).unwrap();
 }
+
+#[test]
+fn test_banner_execution() {
+    let res = commands::banner::execute(BannerArgs::default());
+    assert!(res.is_ok());
+
+    let res = commands::banner::execute(BannerArgs {
+        cat: true,
+        plain: true,
+        ..Default::default()
+    });
+    assert!(res.is_ok());
+
+    let res = commands::banner::execute(BannerArgs {
+        bot: true,
+        plain: true,
+        ..Default::default()
+    });
+    assert!(res.is_ok());
+
+    let res = commands::banner::execute(BannerArgs {
+        font: true,
+        plain: true,
+        ..Default::default()
+    });
+    assert!(res.is_ok());
+
+    let res = commands::banner::execute(BannerArgs {
+        mini: true,
+        plain: true,
+        ..Default::default()
+    });
+    assert!(res.is_ok());
+}
+
 

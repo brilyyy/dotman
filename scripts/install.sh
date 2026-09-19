@@ -195,6 +195,25 @@ mkdir -p "$INSTALL_DIR"
 cp "$SOURCE_BIN" "${INSTALL_DIR}/dotman"
 chmod +x "${INSTALL_DIR}/dotman"
 
+echo ""
+if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
+    printf "%b\n" "\033[38;5;183m       .  ｡ ﾟ ☁︎ ｡ ﾟ  ✧\033[0m"
+    printf "%b\n" "\033[38;5;218m     (\\ (\\   \033[38;5;159m╭─────────────────────────────╮\033[0m"
+    printf "%b\n" "\033[38;5;218m    ( •.•)  \033[38;5;159m│ \033[38;5;183m· ﾟ ✧  d o t m a n  ✧ ﾟ ·\033[38;5;159m   │\033[0m"
+    printf "%b\n" "\033[38;5;218m    o_(\")(\")\033[38;5;159m│  \033[38;5;223mfast · safe · cozy dotfiles\033[38;5;159m │\033[0m"
+    printf "%b\n" "\033[38;5;159m            ╰─────────────────────────────╯\033[0m"
+    echo ""
+else
+    cat << 'BANNER_EOF'
+       .  ｡ ﾟ ☁︎ ｡ ﾟ  ✧
+     (\ (\   ╭─────────────────────────────╮
+    ( •.•)  │ · ﾟ ✧  d o t m a n  ✧ ﾟ ·   │
+    o_(")(")│  fast · safe · cozy dotfiles │
+            ╰─────────────────────────────╯
+
+BANNER_EOF
+fi
+
 print_badge_ok "Installed dotman to ${BOLD}${INSTALL_DIR}/dotman${NC}"
 
 # 5. Verify installation

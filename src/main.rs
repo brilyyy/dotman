@@ -27,6 +27,7 @@ fn main() {
 
     let result = match cli.command {
         Commands::Init => commands::init::execute(),
+        Commands::Banner(args) => commands::banner::execute(args),
         Commands::Add(args) => commands::add::execute(args),
         Commands::Remove(args) => commands::remove::execute(args),
         Commands::Deploy(args) => commands::deploy::execute(args),

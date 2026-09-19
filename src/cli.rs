@@ -2,12 +2,20 @@ use clap::{Args, Parser, Subcommand};
 use clap_complete::Shell;
 use std::path::PathBuf;
 
+pub const CLI_BANNER: &str = "\
+\u{00A0}\u{00A0}\u{00A0}\u{00A0}\u{00A0}\u{00A0} .  ｡ ﾟ ☁︎ ｡ ﾟ  ✧\n\
+\u{00A0}\u{00A0}\u{00A0}\u{00A0} (\\ (\\   ╭─────────────────────────────╮\n\
+\u{00A0}\u{00A0}\u{00A0}\u{00A0}( •.•)  │ · ﾟ ✧  d o t m a n  ✧ ﾟ ·   │\n\
+\u{00A0}\u{00A0}\u{00A0}\u{00A0}o_(\")(\")│  fast · safe · cozy dotfiles │\n\
+\u{00A0}\u{00A0}\u{00A0}\u{00A0}\u{00A0}\u{00A0}\u{00A0}\u{00A0}\u{00A0}\u{00A0}\u{00A0}\u{00A0}╰─────────────────────────────╯\n";
+
 #[derive(Debug, Parser)]
 #[command(
     name = "dotman",
     author,
     version,
-    about = "Fast, safe, and transparent dotfile manager in Rust"
+    about = "Fast, safe, and transparent dotfile manager in Rust",
+    before_help = CLI_BANNER
 )]
 pub struct Cli {
     #[arg(short, long, action = clap::ArgAction::Count, global = true, help = "Increase logging verbosity (-v, -vv)")]
@@ -21,6 +29,9 @@ pub struct Cli {
 pub enum Commands {
     #[command(about = "Initialize the current directory as a dotfile repository")]
     Init,
+
+    #[command(about = "Display the cute aesthetic dotman banner")]
+    Banner(BannerArgs),
 
     #[command(about = "Add a file or directory to dotman management")]
     Add(AddArgs),
@@ -112,3 +123,22 @@ pub struct CompletionsArgs {
     #[arg(help = "Target shell to generate completions for (bash, zsh, fish, powershell, elvish)")]
     pub shell: Shell,
 }
+
+#[derive(Debug, Args, Default)]
+pub struct BannerArgs {
+    #[arg(long, help = "Show the cute sleeping cat banner")]
+    pub cat: bool,
+
+    #[arg(long, help = "Show the retro-cute CRT kaomoji bot banner")]
+    pub bot: bool,
+
+    #[arg(long, help = "Show the soft rounded typography banner")]
+    pub font: bool,
+
+    #[arg(long, help = "Show the compact kaomoji badge")]
+    pub mini: bool,
+
+    #[arg(long, help = "Output plain text without ANSI colors")]
+    pub plain: bool,
+}
+

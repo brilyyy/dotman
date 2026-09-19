@@ -30,6 +30,8 @@ pub fn execute() -> Result<()> {
 
     info!(manifest = %manifest_path.display(), backup = %backup_dir.display(), "Initialized dotman repository");
 
+    ui::print_banner(ui::BannerStyle::Bunny, false);
+    println!();
     println!("Initialized dotman repository at {}", style(current_dir.display()).bold());
     println!("  {} Created manifest: {}", ui::badge_add(), style(DEFAULT_MANIFEST_NAME).cyan());
     println!("  {} Created backup quarantine: {}", ui::badge_add(), style(format!("{}/", DEFAULT_BACKUP_DIR)).dim());
