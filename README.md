@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/brilyyy/dotman/releases"><img src="https://img.shields.io/badge/release-v1.0.0-00f2fe.svg?style=flat-square" alt="Release"></a>
+  <a href="https://github.com/brilyyy/dotman/releases"><img src="https://img.shields.io/badge/release-v1.1.0-00f2fe.svg?style=flat-square" alt="Release"></a>
   <a href="https://www.rust-lang.org"><img src="https://img.shields.io/badge/rust-1.80+-f97316.svg?style=flat-square" alt="Rust 1.80+"></a>
   <a href="https://github.com/brilyyy/dotman/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square" alt="License"></a>
   <img src="https://img.shields.io/badge/platform-linux%20%7C%20macos-grey.svg?style=flat-square" alt="Platforms">
@@ -227,6 +227,42 @@ dotman install-deps --dry-run
 
 ---
 
+## Non-Symlink Copy Mode (v1.1.0+)
+
+While symlinks provide zero-latency editing, certain applications and tools have strict requirements that break with symlinks:
+- **OpenSSH & GPG**: Strictly check permissions and file types; some utilities complain or fail if `~/.ssh/config` or keyrings are symlinks.
+- **Electron & Modern Editors**: Some GUI apps perform atomic saves (writing a new file and renaming it), which can silently unlink symlinks and turn them into unmanaged standalone files.
+- **Restricted / Sandboxed Environments**: Containers or chroot environments where symlinks resolving outside the root fail.
+
+`dotman` provides first-class support for **regular file/directory copies**:
+
+### 1. Adding an Item in Copy Mode
+```bash
+dotman add ~/.ssh/config --copy
+```
+`dotman` copies the configuration into your repository while preserving the real file at its target path (no symlink created). In `dot.toml`, it records `method = "copy"`:
+```toml
+[items]
+"ssh/config" = { target = "~/.ssh/config", type = "file", method = "copy" }
+```
+
+### 2. Parity & Drift Tracking
+`dotman status` automatically checks content hash parity for copy-mode items:
+```bash
+dotman status
+```
+```text
+  ✓ ssh/config       -> ~/.ssh/config (copy, in sync)
+  ! ssh/config       -> ~/.ssh/config (copy modified)
+```
+
+### 3. Deploying in Copy Mode
+- **Per-item**: Any item with `method = "copy"` is deployed as a regular file/directory copy.
+- **Global override**: Run `dotman deploy --copy` to deploy the entire repository as regular copies instead of symlinks.
+- **Safety**: Existing targets are still protected by `.bak/` quarantine if conflicts arise.
+
+---
+
 ## Safety Net & Rollback
 
 `dotman` is built with a zero-data-loss guarantee:
@@ -245,10 +281,10 @@ dotman install-deps --dry-run
 | Command | Flags | Description |
 |---|---|---|
 | `dotman init` | | Initialize current directory as a dotfile repository |
-| `dotman add <path>` | `-n, --name <NAME>`<br>`-t, --tag <TAG>` | Add a file or directory to repository management |
+| `dotman add <path>` | `-n, --name <NAME>`<br>`-t, --tag <TAG>`<br>`--copy` | Add file/folder to repository (`--copy` keeps as regular file) |
 | `dotman remove <item>` | `--purge` | Remove item from management and restore original file |
-| `dotman deploy` | `-t, --tag <TAG>`<br>`-f, --force`<br>`--dry-run` | Link managed dotfiles to target system paths |
-| `dotman status` | | Verify integrity and health of all managed symlinks |
+| `dotman deploy` | `-t, --tag <TAG>`<br>`-f, --force`<br>`--copy`<br>`--dry-run` | Deploy dotfiles to target paths (`--copy` deploys regular files) |
+| `dotman status` | | Verify integrity and health of all managed symlinks and copies |
 | `dotman restore` | `[item]` | Interactively restore quarantined backups from `.bak/` |
 | `dotman install-deps` | `-c, --category <CAT>`<br>`-m, --manager <PM>`<br>`--cmd <CMD>`<br>`--script <PATH>`<br>`--dry-run` | Install declarative system dependencies |
 | `dotman completions <shell>` | | Generate shell completion scripts (`bash`, `zsh`, `fish`, `elvish`) |

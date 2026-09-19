@@ -14,11 +14,27 @@ pub enum ItemType {
     Folder,
 }
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum DeployMethod {
+    #[default]
+    Symlink,
+    Copy,
+}
+
+impl DeployMethod {
+    pub fn is_symlink(&self) -> bool {
+        matches!(self, Self::Symlink)
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ItemConfig {
     pub target: String,
     #[serde(rename = "type")]
     pub item_type: ItemType,
+    #[serde(default, skip_serializing_if = "DeployMethod::is_symlink")]
+    pub method: DeployMethod,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub tags: Vec<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -134,6 +150,7 @@ impl DotConfig {
             ItemConfig {
                 target: "~/.zshrc".to_string(),
                 item_type: ItemType::File,
+                method: DeployMethod::Symlink,
                 tags: vec![],
                 post_deploy: None,
             },
@@ -143,6 +160,7 @@ impl DotConfig {
             ItemConfig {
                 target: "~/.config/nvim".to_string(),
                 item_type: ItemType::Folder,
+                method: DeployMethod::Symlink,
                 tags: vec!["dev".to_string()],
                 post_deploy: None,
             },
@@ -248,5 +266,21 @@ mod tests {
 
         let custom = config.dependencies.get("custom_env").unwrap();
         assert_eq!(custom.script(), Some("scripts/setup.sh"));
+    }
+
+    #[test]
+    fn test_parse_copy_method() {
+        let toml_str = r#"
+        [items]
+        "ssh/config" = { target = "~/.ssh/config", type = "file", method = "copy" }
+        "zshrc" = { target = "~/.zshrc", type = "file" }
+        "#;
+
+        let config: DotConfig = toml::from_str(toml_str).unwrap();
+        let ssh = config.items.get("ssh/config").unwrap();
+        assert_eq!(ssh.method, DeployMethod::Copy);
+
+        let zshrc = config.items.get("zshrc").unwrap();
+        assert_eq!(zshrc.method, DeployMethod::Symlink);
     }
 }

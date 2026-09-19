@@ -12,6 +12,15 @@ pub enum SymlinkStatus {
     Missing,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CopyStatus {
+    InSync,
+    Modified(String),
+    SymlinkConflict,
+    Missing,
+    Conflict(String),
+}
+
 /// Atomically writes content to a file via a temporary file and atomic rename in the same directory.
 pub fn atomic_write(path: &Path, content: &str) -> Result<()> {
     let parent = path.parent().unwrap_or_else(|| Path::new("."));
@@ -171,6 +180,75 @@ pub fn check_symlink_status(repo_source: &Path, target: &Path) -> SymlinkStatus 
     } else {
         SymlinkStatus::Conflict("Target exists and is a regular file or directory".to_string())
     }
+}
+
+/// Checks the status of a target copied file or folder relative to the repo source.
+pub fn check_copy_status(repo_source: &Path, target: &Path) -> CopyStatus {
+    let target_meta = match fs::symlink_metadata(target) {
+        Ok(m) => m,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return CopyStatus::Missing,
+        Err(e) => return CopyStatus::Conflict(format!("Error reading metadata: {}", e)),
+    };
+
+    if target_meta.file_type().is_symlink() {
+        return CopyStatus::SymlinkConflict;
+    }
+
+    let source_meta = match fs::metadata(repo_source) {
+        Ok(m) => m,
+        Err(_) => return CopyStatus::Missing,
+    };
+
+    if source_meta.is_file() && target_meta.is_file() {
+        match (fs::read(repo_source), fs::read(target)) {
+            (Ok(a), Ok(b)) if a == b => CopyStatus::InSync,
+            (Ok(_), Ok(_)) => CopyStatus::Modified("File contents differ".to_string()),
+            _ => CopyStatus::Conflict("Could not read files for comparison".to_string()),
+        }
+    } else if source_meta.is_dir() && target_meta.is_dir() {
+        if dir_contents_match(repo_source, target) {
+            CopyStatus::InSync
+        } else {
+            CopyStatus::Modified("Directory contents differ".to_string())
+        }
+    } else {
+        CopyStatus::Conflict("Type mismatch between source and target".to_string())
+    }
+}
+
+fn dir_contents_match(src: &Path, dst: &Path) -> bool {
+    let src_entries: std::collections::BTreeMap<_, _> = match fs::read_dir(src) {
+        Ok(entries) => entries.filter_map(|e| e.ok()).map(|e| (e.file_name(), e.path())).collect(),
+        Err(_) => return false,
+    };
+    let dst_entries: std::collections::BTreeMap<_, _> = match fs::read_dir(dst) {
+        Ok(entries) => entries.filter_map(|e| e.ok()).map(|e| (e.file_name(), e.path())).collect(),
+        Err(_) => return false,
+    };
+
+    if src_entries.keys().collect::<Vec<_>>() != dst_entries.keys().collect::<Vec<_>>() {
+        return false;
+    }
+
+    for (name, src_path) in src_entries {
+        let dst_path = match dst_entries.get(&name) {
+            Some(p) => p,
+            None => return false,
+        };
+        if src_path.is_dir() && dst_path.is_dir() {
+            if !dir_contents_match(&src_path, dst_path) {
+                return false;
+            }
+        } else if src_path.is_file() && dst_path.is_file() {
+            if fs::read(&src_path).ok() != fs::read(dst_path).ok() {
+                return false;
+            }
+        } else {
+            return false;
+        }
+    }
+
+    true
 }
 
 /// Computes a unified text diff between two files with subtle ANSI colors.

@@ -345,6 +345,68 @@ else
     FAILED=$((FAILED + 1))
 fi
 
+echo -e "\n${CYAN}=== Scenario 20: Non-Symlink Copy Mode Support ===${NC}"
+mkdir -p /home/tester/.ssh
+echo "Host github.com" > /home/tester/.ssh/config
+
+# 1. Add file with --copy
+dotman add /home/tester/.ssh/config --copy
+if [ ! -L "/home/tester/.ssh/config" ] && [ -f "/home/tester/.ssh/config" ]; then
+    echo -e "    ${GREEN}PASS${NC}: dotman add --copy kept target as a regular file (not symlink)"
+    PASSED=$((PASSED + 1))
+else
+    echo -e "    ${RED}FAIL${NC}: target is unexpectedly a symlink or missing"
+    FAILED=$((FAILED + 1))
+fi
+
+if grep -q 'method = "copy"' /home/tester/dotfiles/dot.toml; then
+    echo -e "    ${GREEN}PASS${NC}: dot.toml recorded method = \"copy\""
+    PASSED=$((PASSED + 1))
+else
+    echo -e "    ${RED}FAIL${NC}: dot.toml missing method = \"copy\""
+    FAILED=$((FAILED + 1))
+fi
+
+# 2. Check status shows (copy, in sync)
+dotman status > /tmp/status_copy.out
+if grep -q "copy, in sync" /tmp/status_copy.out; then
+    echo -e "    ${GREEN}PASS${NC}: dotman status reported (copy, in sync)"
+    PASSED=$((PASSED + 1))
+else
+    echo -e "    ${RED}FAIL${NC}: dotman status did not report (copy, in sync)"
+    FAILED=$((FAILED + 1))
+fi
+
+# 3. Simulate drift and restore via deploy --force
+echo "Drifted content" > /home/tester/.ssh/config
+dotman status > /tmp/status_modified.out
+if grep -q "copy modified" /tmp/status_modified.out; then
+    echo -e "    ${GREEN}PASS${NC}: dotman status reported (copy modified)"
+    PASSED=$((PASSED + 1))
+else
+    echo -e "    ${RED}FAIL${NC}: dotman status did not report (copy modified)"
+    FAILED=$((FAILED + 1))
+fi
+
+dotman deploy --force
+if grep -q "Host github.com" /home/tester/.ssh/config && [ ! -L "/home/tester/.ssh/config" ]; then
+    echo -e "    ${GREEN}PASS${NC}: dotman deploy restored copy item as regular file"
+    PASSED=$((PASSED + 1))
+else
+    echo -e "    ${RED}FAIL${NC}: dotman deploy failed to restore copy item"
+    FAILED=$((FAILED + 1))
+fi
+
+# 4. Deploy with global --copy flag overrides symlink to copy
+dotman deploy --copy --force
+if [ ! -L "/home/tester/.config/fish" ] && [ -d "/home/tester/.config/fish" ]; then
+    echo -e "    ${GREEN}PASS${NC}: dotman deploy --copy converted symlinked directory to regular directory copy"
+    PASSED=$((PASSED + 1))
+else
+    echo -e "    ${RED}FAIL${NC}: dotman deploy --copy failed to convert symlink"
+    FAILED=$((FAILED + 1))
+fi
+
 echo -e "\n==============================================================="
 echo -e "Test Results: ${GREEN}${PASSED} passed${NC}, ${RED}${FAILED} failed${NC}"
 echo -e "==============================================================="

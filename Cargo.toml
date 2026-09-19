@@ -1,6 +1,6 @@
 [package]
 name = "dotman"
-version = "1.0.0"
+version = "1.1.0"
 edition = "2024"
 authors = ["Brilyan <49208216+brilyyy@users.noreply.github.com>"]
 description = "Fast, safe, and transparent dotfile manager in Rust"

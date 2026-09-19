@@ -65,6 +65,62 @@ pub fn execute(args: AddArgs) -> Result<()> {
         }
     }
 
+    if args.copy {
+        info!(
+            from = %source_path.display(),
+            to = %repo_dest_path.display(),
+            "Copying target to repository (--copy mode)"
+        );
+
+        copy_preserving_permissions(&source_path, &repo_dest_path)?;
+
+        let rollback = || {
+            if repo_dest_path.is_dir() {
+                let _ = fs::remove_dir_all(&repo_dest_path);
+            } else {
+                let _ = fs::remove_file(&repo_dest_path);
+            }
+        };
+
+        let mut config = match DotConfig::load_from_path(&manifest_path) {
+            Ok(c) => c,
+            Err(err) => {
+                rollback();
+                return Err(err.context("Failed to load dot.toml. Rolled back copied file."));
+            }
+        };
+
+        let target_contracted = contract_home(&source_path);
+        let key = rel_repo_path.to_string_lossy().to_string();
+
+        config.items.insert(
+            key.clone(),
+            ItemConfig {
+                target: target_contracted.clone(),
+                item_type,
+                method: crate::config::DeployMethod::Copy,
+                tags: args.tags.clone(),
+                post_deploy: None,
+            },
+        );
+
+        if let Err(err) = config.save_to_path(&manifest_path) {
+            rollback();
+            return Err(err.context("Failed to save dot.toml. Rolled back copied file."));
+        }
+
+        println!("{} Added {} {}", ui::badge_ok(), style(&key).bold().cyan(), style("(copy mode)").yellow());
+        println!("  source    {}", style(source_path.display()).dim());
+        println!("  repo      {}", style(repo_dest_path.display()).dim());
+        println!("  target    {}", style(target_contracted).dim());
+        println!("  mode      copy (regular file/folder preserved on system)");
+        if !args.tags.is_empty() {
+            println!("  tags      {}", style(args.tags.join(", ")).cyan());
+        }
+
+        return Ok(());
+    }
+
     info!(
         from = %source_path.display(),
         to = %repo_dest_path.display(),
@@ -129,6 +185,7 @@ pub fn execute(args: AddArgs) -> Result<()> {
         ItemConfig {
             target: target_contracted.clone(),
             item_type,
+            method: crate::config::DeployMethod::Symlink,
             tags: args.tags.clone(),
             post_deploy: None,
         },
@@ -144,7 +201,7 @@ pub fn execute(args: AddArgs) -> Result<()> {
     println!("  repo      {}", style(repo_dest_path.display()).dim());
     println!("  target    {}", style(&target_contracted).dim());
     if !args.tags.is_empty() {
-        println!("  tags      {}", style(args.tags.join(", ")).yellow());
+        println!("  tags      {}", style(args.tags.join(", ")).cyan());
     }
 
     Ok(())

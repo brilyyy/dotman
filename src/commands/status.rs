@@ -1,5 +1,7 @@
-use crate::config::DotConfig;
-use crate::fs::{check_symlink_status, contract_home, expand_home, SymlinkStatus};
+use crate::config::{DeployMethod, DotConfig};
+use crate::fs::{
+    check_copy_status, check_symlink_status, contract_home, expand_home, CopyStatus, SymlinkStatus,
+};
 use crate::ui;
 use anyhow::{Context, Result};
 use console::style;
@@ -26,42 +28,100 @@ pub fn execute() -> Result<()> {
         let target = expand_home(&item.target)?;
         let display_target = contract_home(&target);
 
-        let status = check_symlink_status(&repo_source, &target);
-
-        match status {
-            SymlinkStatus::Valid => {
-                valid += 1;
-                println!("  {} {:<16} -> {}", ui::badge_ok(), style(key).bold(), style(display_target).dim());
+        match item.method {
+            DeployMethod::Copy => {
+                let status = check_copy_status(&repo_source, &target);
+                match status {
+                    CopyStatus::InSync => {
+                        valid += 1;
+                        println!(
+                            "  {} {:<16} -> {} {}",
+                            ui::badge_ok(),
+                            style(key).bold(),
+                            style(display_target).dim(),
+                            style("(copy, in sync)").cyan().dim()
+                        );
+                    }
+                    CopyStatus::Modified(reason) => {
+                        conflict += 1;
+                        println!(
+                            "  {} {:<16} -> {} {}",
+                            ui::badge_warn(),
+                            style(key).yellow(),
+                            style(display_target).dim(),
+                            style(format!("(copy modified: {})", reason)).yellow()
+                        );
+                    }
+                    CopyStatus::Missing => {
+                        missing += 1;
+                        println!(
+                            "  {} {:<16} -> {} {}",
+                            ui::badge_dim(),
+                            key,
+                            style(display_target).dim(),
+                            style("(copy, not deployed)").dim()
+                        );
+                    }
+                    CopyStatus::SymlinkConflict => {
+                        conflict += 1;
+                        println!(
+                            "  {} {:<16} -> {} {}",
+                            ui::badge_warn(),
+                            style(key).yellow(),
+                            style(display_target).dim(),
+                            style("(conflict: is a symlink, expected copy)").yellow()
+                        );
+                    }
+                    CopyStatus::Conflict(reason) => {
+                        conflict += 1;
+                        println!(
+                            "  {} {:<16} -> {} {}",
+                            ui::badge_warn(),
+                            style(key).yellow(),
+                            style(display_target).dim(),
+                            style(format!("({})", reason)).yellow()
+                        );
+                    }
+                }
             }
-            SymlinkStatus::Missing => {
-                missing += 1;
-                println!(
-                    "  {} {:<16} -> {} {}",
-                    ui::badge_dim(),
-                    key,
-                    style(display_target).dim(),
-                    style("(not deployed)").dim()
-                );
-            }
-            SymlinkStatus::Broken(reason) => {
-                broken += 1;
-                println!(
-                    "  {} {:<16} -> {} {}",
-                    ui::badge_err(),
-                    style(key).red(),
-                    style(display_target).dim(),
-                    style(format!("({})", reason)).red()
-                );
-            }
-            SymlinkStatus::Conflict(reason) => {
-                conflict += 1;
-                println!(
-                    "  {} {:<16} -> {} {}",
-                    ui::badge_warn(),
-                    style(key).yellow(),
-                    style(display_target).dim(),
-                    style(format!("({})", reason)).yellow()
-                );
+            DeployMethod::Symlink => {
+                let status = check_symlink_status(&repo_source, &target);
+                match status {
+                    SymlinkStatus::Valid => {
+                        valid += 1;
+                        println!("  {} {:<16} -> {}", ui::badge_ok(), style(key).bold(), style(display_target).dim());
+                    }
+                    SymlinkStatus::Missing => {
+                        missing += 1;
+                        println!(
+                            "  {} {:<16} -> {} {}",
+                            ui::badge_dim(),
+                            key,
+                            style(display_target).dim(),
+                            style("(not deployed)").dim()
+                        );
+                    }
+                    SymlinkStatus::Broken(reason) => {
+                        broken += 1;
+                        println!(
+                            "  {} {:<16} -> {} {}",
+                            ui::badge_err(),
+                            style(key).red(),
+                            style(display_target).dim(),
+                            style(format!("({})", reason)).red()
+                        );
+                    }
+                    SymlinkStatus::Conflict(reason) => {
+                        conflict += 1;
+                        println!(
+                            "  {} {:<16} -> {} {}",
+                            ui::badge_warn(),
+                            style(key).yellow(),
+                            style(display_target).dim(),
+                            style(format!("({})", reason)).yellow()
+                        );
+                    }
+                }
             }
         }
     }

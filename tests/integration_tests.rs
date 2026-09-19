@@ -1,8 +1,8 @@
 use clap_complete::Shell;
 use dotman::cli::{AddArgs, CompletionsArgs, DeployArgs, InstallDepsArgs, RemoveArgs};
 use dotman::commands;
-use dotman::config::{DotConfig, DEFAULT_BACKUP_DIR, DEFAULT_MANIFEST_NAME};
-use dotman::fs::{check_symlink_status, compute_diff, SymlinkStatus};
+use dotman::config::{DeployMethod, DotConfig, DEFAULT_BACKUP_DIR, DEFAULT_MANIFEST_NAME};
+use dotman::fs::{check_copy_status, check_symlink_status, compute_diff, CopyStatus, SymlinkStatus};
 use dotman::hooks::run_hook;
 use std::fs;
 use tempfile::tempdir;
@@ -44,6 +44,7 @@ fn test_add_file_and_symlink() {
         path: mock_file.clone(),
         name: Some("shell/bashrc".to_string()),
         tags: vec!["shell".to_string()],
+        copy: false,
     };
 
     let res = commands::add::execute(add_args);
@@ -80,6 +81,7 @@ fn test_remove_demigrates_real_file() {
         path: test_file.clone(),
         name: Some("gitconfig".to_string()),
         tags: vec![],
+        copy: false,
     }).unwrap();
 
     assert!(fs::symlink_metadata(&test_file).unwrap().file_type().is_symlink());
@@ -117,6 +119,7 @@ fn test_remove_purge() {
         path: test_file.clone(),
         name: Some("tmux.conf".to_string()),
         tags: vec![],
+        copy: false,
     }).unwrap();
 
     let res = commands::remove::execute(RemoveArgs {
@@ -156,6 +159,7 @@ fn test_deploy_dry_run() {
         tag: None,
         dry_run: true,
         force: false,
+        copy: false,
     });
     std::env::set_current_dir(original_cwd).unwrap();
 
@@ -255,3 +259,101 @@ fn test_hook_runner() {
     assert!(res.is_ok());
     assert_eq!(fs::read_to_string(&token).unwrap().trim(), "hook executed");
 }
+
+#[test]
+fn test_add_and_deploy_copy_mode() {
+    let temp = tempdir().unwrap();
+    let original_cwd = std::env::current_dir().unwrap();
+
+    std::env::set_current_dir(temp.path()).unwrap();
+    commands::init::execute().unwrap();
+
+    let user_home = temp.path().join("home");
+    fs::create_dir_all(&user_home).unwrap();
+    let ssh_config = user_home.join(".ssh_config");
+    fs::write(&ssh_config, "Host github.com\n  User git\n").unwrap();
+
+    // 1. Add with --copy
+    let add_args = AddArgs {
+        path: ssh_config.clone(),
+        name: Some("ssh/config".to_string()),
+        tags: vec!["ssh".to_string()],
+        copy: true,
+    };
+    let res = commands::add::execute(add_args);
+    assert!(res.is_ok());
+
+    // Repo file exists
+    let repo_file = temp.path().join("ssh/config");
+    assert!(repo_file.exists());
+    assert_eq!(fs::read_to_string(&repo_file).unwrap(), "Host github.com\n  User git\n");
+
+    // Target file is NOT a symlink, it's a real file
+    let meta = fs::symlink_metadata(&ssh_config).unwrap();
+    assert!(!meta.file_type().is_symlink());
+
+    // Manifest contains item with method = DeployMethod::Copy
+    let cfg = DotConfig::load_from_path(&temp.path().join(DEFAULT_MANIFEST_NAME)).unwrap();
+    assert_eq!(cfg.items.get("ssh/config").unwrap().method, DeployMethod::Copy);
+
+    // Status check is in sync
+    assert_eq!(check_copy_status(&repo_file, &ssh_config), CopyStatus::InSync);
+
+    // 2. Modify target and verify copy status becomes Modified
+    fs::write(&ssh_config, "Host github.com\n  User custom\n").unwrap();
+    assert!(matches!(check_copy_status(&repo_file, &ssh_config), CopyStatus::Modified(_)));
+
+    // 3. Deploy without --copy (manifest item has method = copy) with force: true
+    let deploy_res = commands::deploy::execute(DeployArgs {
+        tag: None,
+        dry_run: false,
+        force: true,
+        copy: false,
+    });
+    assert!(deploy_res.is_ok());
+    // After deploy, target is in sync with repo file and still regular file
+    assert_eq!(fs::read_to_string(&ssh_config).unwrap(), "Host github.com\n  User git\n");
+    assert!(!fs::symlink_metadata(&ssh_config).unwrap().file_type().is_symlink());
+
+    std::env::set_current_dir(original_cwd).unwrap();
+}
+
+#[test]
+fn test_deploy_override_copy_flag() {
+    let temp = tempdir().unwrap();
+    let original_cwd = std::env::current_dir().unwrap();
+
+    std::env::set_current_dir(temp.path()).unwrap();
+    commands::init::execute().unwrap();
+
+    let user_home = temp.path().join("home");
+    fs::create_dir_all(&user_home).unwrap();
+    let test_file = user_home.join(".config_file");
+    fs::write(&test_file, "original content").unwrap();
+
+    // Add with standard symlink
+    commands::add::execute(AddArgs {
+        path: test_file.clone(),
+        name: Some("test_file".to_string()),
+        tags: vec![],
+        copy: false,
+    }).unwrap();
+
+    assert!(fs::symlink_metadata(&test_file).unwrap().file_type().is_symlink());
+
+    // Deploy with --copy --force -> converts symlink to regular file copy
+    let res = commands::deploy::execute(DeployArgs {
+        tag: None,
+        dry_run: false,
+        force: true,
+        copy: true,
+    });
+    assert!(res.is_ok());
+
+    let meta = fs::symlink_metadata(&test_file).unwrap();
+    assert!(!meta.file_type().is_symlink(), "Deploy --copy should deploy as regular file");
+    assert_eq!(fs::read_to_string(&test_file).unwrap(), "original content");
+
+    std::env::set_current_dir(original_cwd).unwrap();
+}
+

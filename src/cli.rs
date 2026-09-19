@@ -54,6 +54,9 @@ pub struct AddArgs {
 
     #[arg(short, long = "tag", help = "Tags to associate with this item (e.g. -t dev)")]
     pub tags: Vec<String>,
+
+    #[arg(long, help = "Manage this item as a regular copy instead of a symlink")]
+    pub copy: bool,
 }
 
 #[derive(Debug, Args)]
@@ -81,6 +84,9 @@ pub struct DeployArgs {
 
     #[arg(short, long, help = "Automatically overwrite and quarantine conflicting targets without interactive prompt")]
     pub force: bool,
+
+    #[arg(long, help = "Deploy items as regular copies instead of symlinks")]
+    pub copy: bool,
 }
 
 #[derive(Debug, Args)]
