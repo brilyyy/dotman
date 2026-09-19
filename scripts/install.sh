@@ -123,12 +123,12 @@ print_badge_info "Detected platform: ${BOLD}${OS} ${ARCH}${NC} (${TARGET})"
 SCRIPT_DIR="$(cd "$(dirname "$0")" 2>/dev/null && pwd || echo "")"
 REPO_DIR="$(cd "${SCRIPT_DIR}/.." 2>/dev/null && pwd || echo "")"
 
-TEMP_BIN=""
+TEMP_DIR=""
 CLEANUP_TMP=0
 
 cleanup() {
-    if [ "$CLEANUP_TMP" -eq 1 ] && [ -n "$TEMP_BIN" ] && [ -f "$TEMP_BIN" ]; then
-        rm -f "$TEMP_BIN"
+    if [ "$CLEANUP_TMP" -eq 1 ] && [ -n "$TEMP_DIR" ] && [ -d "$TEMP_DIR" ]; then
+        rm -rf "$TEMP_DIR"
     fi
 }
 trap cleanup EXIT INT TERM
@@ -152,7 +152,7 @@ else
         exit 1
     fi
 
-    TEMP_BIN="$(mktemp 2>/dev/null || mktemp -t dotman.XXXXXX)"
+    TEMP_DIR="$(mktemp -d 2>/dev/null || mktemp -d -t dotman.XXXXXX)"
     CLEANUP_TMP=1
 
     if [ "$DOTMAN_VERSION" = "latest" ]; then
@@ -166,30 +166,28 @@ else
     # Try tar.gz or direct raw binary
     DOWNLOAD_SUCCESS=0
     if [ "$DOWNLOADER" = "curl" ]; then
-        if curl -fsSL "$URL" -o "${TEMP_BIN}.tar.gz" 2>/dev/null; then
-            tar -xzf "${TEMP_BIN}.tar.gz" -C "$(dirname "$TEMP_BIN")"
-            rm -f "${TEMP_BIN}.tar.gz"
+        if curl -fsSL "$URL" -o "${TEMP_DIR}/dotman.tar.gz" 2>/dev/null; then
+            tar -xzf "${TEMP_DIR}/dotman.tar.gz" -C "$TEMP_DIR"
             DOWNLOAD_SUCCESS=1
-        elif curl -fsSL "$URL_RAW" -o "$TEMP_BIN" 2>/dev/null; then
+        elif curl -fsSL "$URL_RAW" -o "${TEMP_DIR}/dotman" 2>/dev/null; then
             DOWNLOAD_SUCCESS=1
         fi
     elif [ "$DOWNLOADER" = "wget" ]; then
-        if wget -qO "${TEMP_BIN}.tar.gz" "$URL" 2>/dev/null; then
-            tar -xzf "${TEMP_BIN}.tar.gz" -C "$(dirname "$TEMP_BIN")"
-            rm -f "${TEMP_BIN}.tar.gz"
+        if wget -qO "${TEMP_DIR}/dotman.tar.gz" "$URL" 2>/dev/null; then
+            tar -xzf "${TEMP_DIR}/dotman.tar.gz" -C "$TEMP_DIR"
             DOWNLOAD_SUCCESS=1
-        elif wget -qO "$TEMP_BIN" "$URL_RAW" 2>/dev/null; then
+        elif wget -qO "${TEMP_DIR}/dotman" "$URL_RAW" 2>/dev/null; then
             DOWNLOAD_SUCCESS=1
         fi
     fi
 
-    if [ "$DOWNLOAD_SUCCESS" -eq 0 ]; then
+    if [ "$DOWNLOAD_SUCCESS" -eq 0 ] || [ ! -f "${TEMP_DIR}/dotman" ]; then
         echo "Error: Failed to download prebuilt binary for ${TARGET} from GitHub releases." >&2
         echo "Please check https://github.com/${DOTMAN_REPO}/releases for available assets." >&2
         exit 1
     fi
 
-    SOURCE_BIN="$TEMP_BIN"
+    SOURCE_BIN="${TEMP_DIR}/dotman"
 fi
 
 # 4. Install binary
