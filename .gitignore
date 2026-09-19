@@ -1,0 +1,16 @@
+# Build artifacts
+/target
+
+# Backup quarantine & manifests from testing
+.bak/
+dot.toml
+
+# Release packaging & archives
+*.tar.gz
+*.sha256
+dist/
+release-assets/
+
+# OS specific
+.DS_Store
+Thumbs.db

@@ -1,0 +1,8 @@
+pub mod add;
+pub mod completions;
+pub mod deploy;
+pub mod init;
+pub mod install_deps;
+pub mod remove;
+pub mod restore;
+pub mod status;
