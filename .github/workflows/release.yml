@@ -25,11 +25,11 @@ jobs:
             use_cross: true
             musl_pkg: false
           - target: x86_64-apple-darwin
-            os: macos-13
+            os: macos-latest
             use_cross: false
             musl_pkg: false
           - target: aarch64-apple-darwin
-            os: macos-14
+            os: macos-latest
             use_cross: false
             musl_pkg: false
 
