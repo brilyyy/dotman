@@ -11,7 +11,7 @@ fi
 DISTROS=(
     "Arch Linux|docker.io/library/archlinux:latest|pacman"
     "Fedora|docker.io/library/fedora:latest|dnf"
-    "Debian/Ubuntu|docker.io/library/ubuntu:24.04|apt-get"
+    "Debian/Ubuntu|docker.io/library/ubuntu:24.04|apt"
     "Alpine Linux|docker.io/library/alpine:latest|apk"
     "openSUSE|registry.opensuse.org/opensuse/tumbleweed:latest|zypper"
 )

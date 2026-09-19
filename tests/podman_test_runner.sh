@@ -181,8 +181,8 @@ assert_eq "/home/tester/dotfiles/fish" "$FISH_TARGET" "Broken symlink self-heale
 
 echo -e "\n${CYAN}=== Scenario 12: Package Manager Integration (install-deps --dry-run) ===${NC}"
 dotman install-deps --dry-run -c core > /tmp/deps.out
-if grep -q "apt-get install -y git curl zsh tmux" /tmp/deps.out; then
-    echo -e "    ${GREEN}PASS${NC}: Identified apt-get and generated expected install command"
+if grep -qE "(apt|apt-get) install -y git curl zsh tmux" /tmp/deps.out; then
+    echo -e "    ${GREEN}PASS${NC}: Identified apt/apt-get and generated expected install command"
     PASSED=$((PASSED + 1))
 else
     echo -e "    ${RED}FAIL${NC}: Unexpected install-deps output"
@@ -237,6 +237,111 @@ if [ -f "/home/tester/hook_token.txt" ] && grep -q "hook_success" "/home/tester/
     PASSED=$((PASSED + 1))
 else
     echo -e "    ${RED}FAIL${NC}: Hook was not executed"
+    FAILED=$((FAILED + 1))
+fi
+
+echo -e "\n${CYAN}=== Scenario 16: Custom Command Templates ({packages} token & execution) ===${NC}"
+cat >> /home/tester/dotfiles/dot.toml << 'CMD_CFG'
+
+[dependencies.custom_cmd]
+cmd = "echo 'INSTALLING: {packages}' > /home/tester/cmd_receipt.txt"
+packages = ["pkg_alpha", "pkg_beta"]
+CMD_CFG
+
+dotman install-deps -c custom_cmd
+if [ -f "/home/tester/cmd_receipt.txt" ] && grep -q "INSTALLING: pkg_alpha pkg_beta" "/home/tester/cmd_receipt.txt"; then
+    echo -e "    ${GREEN}PASS${NC}: Custom command template rendered {packages} and executed successfully"
+    PASSED=$((PASSED + 1))
+else
+    echo -e "    ${RED}FAIL${NC}: Custom command failed to execute or substitute packages"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test CLI --cmd override
+dotman install-deps -c custom_cmd --cmd "echo 'CLI_OVERRIDE: {packages}' > /home/tester/cli_cmd_receipt.txt"
+if [ -f "/home/tester/cli_cmd_receipt.txt" ] && grep -q "CLI_OVERRIDE: pkg_alpha pkg_beta" "/home/tester/cli_cmd_receipt.txt"; then
+    echo -e "    ${GREEN}PASS${NC}: CLI --cmd flag correctly took precedence over manifest"
+    PASSED=$((PASSED + 1))
+else
+    echo -e "    ${RED}FAIL${NC}: CLI --cmd override failed"
+    FAILED=$((FAILED + 1))
+fi
+
+echo -e "\n${CYAN}=== Scenario 17: Dedicated Installer Scripts (Args & Environment) ===${NC}"
+mkdir -p /home/tester/dotfiles/scripts
+cat > /home/tester/dotfiles/scripts/test_installer.sh << 'SCRIPT_EOF'
+#!/bin/sh
+echo "PACKAGES: $DOTMAN_PACKAGES" > /home/tester/script_receipt.txt
+echo "CATEGORY: $DOTMAN_CATEGORY" >> /home/tester/script_receipt.txt
+echo "DRY_RUN: $DOTMAN_DRY_RUN" >> /home/tester/script_receipt.txt
+echo "ARGV: $@" >> /home/tester/script_receipt.txt
+SCRIPT_EOF
+chmod +x /home/tester/dotfiles/scripts/test_installer.sh
+
+cat >> /home/tester/dotfiles/dot.toml << 'SCRIPT_CFG'
+
+[dependencies.script_deps]
+script = "scripts/test_installer.sh"
+packages = ["tool_x", "tool_y"]
+SCRIPT_CFG
+
+dotman install-deps -c script_deps
+if [ -f "/home/tester/script_receipt.txt" ] && \
+   grep -q "PACKAGES: tool_x tool_y" "/home/tester/script_receipt.txt" && \
+   grep -q "CATEGORY: script_deps" "/home/tester/script_receipt.txt" && \
+   grep -q "DRY_RUN: 0" "/home/tester/script_receipt.txt" && \
+   grep -q "ARGV: tool_x tool_y" "/home/tester/script_receipt.txt"; then
+    echo -e "    ${GREEN}PASS${NC}: Dedicated installer script executed with forwarded packages & env vars"
+    PASSED=$((PASSED + 1))
+else
+    echo -e "    ${RED}FAIL${NC}: Script output did not match expected environment or arguments"
+    cat /home/tester/script_receipt.txt 2>/dev/null || true
+    FAILED=$((FAILED + 1))
+fi
+
+echo -e "\n${CYAN}=== Scenario 18: Installer Aliases in [installers] & --manager Overrides ===${NC}"
+cat >> /home/tester/dotfiles/dot.toml << 'ALIAS_CFG'
+
+[installers]
+mock_aur = "echo 'MOCK_AUR: {packages}' > /home/tester/aur_receipt.txt"
+
+[dependencies.aur_category]
+manager = "mock_aur"
+packages = ["super_pkg"]
+ALIAS_CFG
+
+dotman install-deps -c aur_category
+if [ -f "/home/tester/aur_receipt.txt" ] && grep -q "MOCK_AUR: super_pkg" "/home/tester/aur_receipt.txt"; then
+    echo -e "    ${GREEN}PASS${NC}: Named installer alias in [installers] resolved and executed"
+    PASSED=$((PASSED + 1))
+else
+    echo -e "    ${RED}FAIL${NC}: Installer alias failed to resolve"
+    FAILED=$((FAILED + 1))
+fi
+
+# Test --manager cargo dry run
+dotman install-deps -c aur_category --manager cargo --dry-run > /tmp/cargo_override.out
+if grep -q "cargo install super_pkg" /tmp/cargo_override.out; then
+    echo -e "    ${GREEN}PASS${NC}: CLI --manager cargo overrode category manager"
+    PASSED=$((PASSED + 1))
+else
+    echo -e "    ${RED}FAIL${NC}: CLI --manager cargo override failed"
+    FAILED=$((FAILED + 1))
+fi
+
+echo -e "\n${CYAN}=== Scenario 19: Ad-Hoc CLI Script & Command Execution ===${NC}"
+cat > /home/tester/adhoc.sh << 'ADHOC_EOF'
+#!/bin/sh
+echo "ADHOC_SUCCESS" > /home/tester/adhoc_token.txt
+ADHOC_EOF
+chmod +x /home/tester/adhoc.sh
+
+dotman install-deps --script /home/tester/adhoc.sh
+if [ -f "/home/tester/adhoc_token.txt" ] && grep -q "ADHOC_SUCCESS" "/home/tester/adhoc_token.txt"; then
+    echo -e "    ${GREEN}PASS${NC}: Ad-hoc --script executed directly without category specification"
+    PASSED=$((PASSED + 1))
+else
+    echo -e "    ${RED}FAIL${NC}: Ad-hoc --script failed"
     FAILED=$((FAILED + 1))
 fi
 
